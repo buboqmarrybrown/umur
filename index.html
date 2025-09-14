@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="ms">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Demo: Any Key = Next (Wizard)</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;}
+    body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f7f8fb;margin:0;padding:24px}
+    .card{width:100%;max-width:540px;background:#fff;border-radius:12px;box-shadow:0 6px 24px rgba(16,24,40,0.08);padding:28px}
+    h1{font-size:20px;margin:0 0 12px}
+    p.lead{margin:0 0 18px;color:#334155}
+    .step{display:none}
+    .step.active{display:block}
+    .hint{margin-top:12px;color:#64748b;font-size:13px}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+    button{padding:8px 12px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;cursor:pointer}
+    input[type="text"], input[type="number"]{width:100%;padding:10px;border-radius:8px;border:1px solid #e6eef6;font-size:15px}
+    .result{background:#f1f5f9;padding:12px;border-radius:8px;margin-top:12px}
+    footer{font-size:12px;color:#94a3b8;margin-top:16px}
+  </style>
+</head>
+<body>
+  <div class="card" role="main">
+    <h1>=== PROGRAM DEMO (Any Key = Next) ===</h1>
+    <p class="lead">Versi web — tekan sebarang butang pada papan kekunci ATAU klik "Tekan apa-apa" untuk bergerak ke langkah seterusnya.</p>
+
+    <!-- STEP 1: Start (any key) -->
+    <div id="step-start" class="step active">
+      <p>Tekan sebarang butang untuk mula...</p>
+      <div class="controls">
+        <button id="btn-any-start" type="button">Tekan apa-apa</button>
+      </div>
+      <p class="hint">(Boleh tekan ruang / huruf / mana-mana kekunci — atau klik butang di atas.)</p>
+    </div>
+
+    <!-- STEP 2: Nama (cin) -->
+    <div id="step-name" class="step">
+      <form id="form-name">
+        <label for="nama">Masukkan nama anda:</label>
+        <div style="height:8px"></div>
+        <input id="nama" name="nama" type="text" autocomplete="off" required />
+        <div class="controls">
+          <button type="submit">Hantar (Enter)</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- STEP 3: Any key to continue -->
+    <div id="step-any-continue" class="step">
+      <p>Tekan sebarang butang untuk teruskan...</p>
+      <div class="controls">
+        <button id="btn-any-continue" type="button">Tekan apa-apa</button>
+      </div>
+    </div>
+
+    <!-- STEP 4: Umur (cin) -->
+    <div id="step-age" class="step">
+      <form id="form-age">
+        <label for="umur">Masukkan umur anda:</label>
+        <div style="height:8px"></div>
+        <input id="umur" name="umur" type="number" min="0" required />
+        <div class="controls">
+          <button type="submit">Hantar (Enter)</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- STEP 5: Any key to show result -->
+    <div id="step-any-result" class="step">
+      <p>Tekan sebarang butang untuk lihat hasil...</p>
+      <div class="controls">
+        <button id="btn-any-result" type="button">Tekan apa-apa</button>
+      </div>
+    </div>
+
+    <!-- OUTPUT -->
+    <div id="step-output" class="step">
+      <h2>--- OUTPUT ---</h2>
+      <div class="result">
+        <p><strong>Nama :</strong> <span id="out-nama">-</span></p>
+        <p><strong>Umur :</strong> <span id="out-umur">-</span></p>
+      </div>
+    </div>
+
+    <footer>Nota: Sediakan fail ini sebagai <code>index.html</code> dan push ke GitHub repository <code><username>.github.io</code> untuk dipaparkan sebagai GitHub Pages.</footer>
+  </div>
+
+  <script>
+    // Simple step manager
+    const steps = {
+      start: document.getElementById('step-start'),
+      name: document.getElementById('step-name'),
+      anyContinue: document.getElementById('step-any-continue'),
+      age: document.getElementById('step-age'),
+      anyResult: document.getElementById('step-any-result'),
+      output: document.getElementById('step-output')
+    };
+
+    let state = 'start'; // current step id
+    let waitingAnyKey = true; // true when any key should act as Next
+
+    function show(stepId) {
+      Object.values(steps).forEach(el => el.classList.remove('active'));
+      steps[stepId].classList.add('active');
+      state = stepId;
+      // set waitingAnyKey only for the explicit any-key steps
+      waitingAnyKey = (stepId === 'start' || stepId === 'anyContinue' || stepId === 'anyResult');
+      // move focus away from inputs when waiting for any key, so keydown isn't captured by input
+      if (waitingAnyKey) document.activeElement.blur();
+      // focus first input when arriving to input steps
+      if (stepId === 'name') document.getElementById('nama').focus();
+      if (stepId === 'age') document.getElementById('umur').focus();
+    }
+
+    // any-key handler (keyboard)
+    document.addEventListener('keydown', (ev) => {
+      // if we're waiting for any key AND the active element is not an input (so typing into input won't trigger)
+      const active = document.activeElement;
+      const isTyping = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+      if (!waitingAnyKey) return;
+      if (isTyping) return; // ignore key presses while typing in inputs
+      // treat Escape as "any key" as well
+      proceedAnyKey();
+    });
+
+    // any-key from on-screen buttons
+    document.getElementById('btn-any-start').addEventListener('click', proceedAnyKey);
+    document.getElementById('btn-any-continue').addEventListener('click', proceedAnyKey);
+    document.getElementById('btn-any-result').addEventListener('click', proceedAnyKey);
+
+    function proceedAnyKey() {
+      if (state === 'start') {
+        show('name');
+      } else if (state === 'anyContinue') {
+        show('age');
+      } else if (state === 'anyResult') {
+        // show results
+        updateOutput();
+        show('output');
+      }
+    }
+
+    // Handle forms (cin-like behaviour — user types and presses Enter to submit)
+    document.getElementById('form-name').addEventListener('submit', function(e){
+      e.preventDefault();
+      // store name and go to next any-key step
+      const nama = document.getElementById('nama').value.trim();
+      if (!nama) { alert('Sila masukkan nama.'); return; }
+      // keep value (will be read later)
+      show('anyContinue');
+    });
+
+    document.getElementById('form-age').addEventListener('submit', function(e){
+      e.preventDefault();
+      const umur = document.getElementById('umur').value.trim();
+      if (umur === '') { alert('Sila masukkan umur.'); return; }
+      show('anyResult');
+    });
+
+    function updateOutput(){
+      document.getElementById('out-nama').textContent = document.getElementById('nama').value || '-';
+      document.getElementById('out-umur').textContent = document.getElementById('umur').value || '-';
+    }
+
+    // initial focus hint
+    // show initial step
+    show('start');
+  </script>
+</body>
+</html>
